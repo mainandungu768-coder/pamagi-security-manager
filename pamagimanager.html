@@ -1,0 +1,545 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Pamagi Security Manager</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f1f4f8;
+  margin: 0;
+  color: #222;
+}
+header {
+  background: #101820;
+  color: white;
+  padding: 22px;
+  text-align: center;
+}
+nav {
+  background: #243447;
+  padding: 12px;
+  text-align: center;
+}
+nav button {
+  margin: 4px;
+  padding: 10px 14px;
+  cursor: pointer;
+}
+main {
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 15px;
+}
+.card {
+  background: white;
+  padding: 18px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+}
+input, select {
+  padding: 10px;
+  margin: 5px 0 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.action {
+  background: #101820;
+  color: white;
+  padding: 11px 18px;
+  border: 0;
+  cursor: pointer;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+th { background: #243447; color: white; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>PAMAGI SECURITY</h1>
+  <p>Security Company Manager</p>
+</header>
+
+<nav>
+  <button onclick="showPage('dashboard')">Dashboard</button>
+  <button onclick="showPage('guards')">Register Guards</button>
+  <button onclick="showPage('attendance')">Attendance</button>
+</nav>
+
+<main>
+  <section id="dashboard" class="card">
+    <h2>Dashboard</h2>
+    <p>Total Registered Guards: <strong id="totalGuards">0</strong></p>
+    <p>Attendance Records: <strong id="totalAttendance">0</strong></p>
+    <p>Welcome to your security management system.</p>
+<h3>Guard Deployment Report</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Client Site</th>
+      <th>Number of Guards</th>
+    </tr>
+  </thead>
+  <tbody id="siteReport"></tbody>
+</table>  </section>
+
+  <section id="guards" class="card" hidden>
+    <h2>Register a Guard</h2>
+    <form id="guardForm">
+      <label>Full Name</label>
+      <input id="guardName" required>
+
+ <label for="guardPhoto">Guard Photo:</label>
+<input id="guardPhoto" type="file" accept="image/*">     <label>Phone Number</label>
+      <input id="guardPhone" type="tel" required>
+
+      <label>National ID Number</label>
+      <input id="guardId" required>
+
+      <label>Assigned Site</label>
+      <input id="guardSite" required>
+
+      <button class="action" type="submit">Register Guard</button>
+    </form>
+
+    <input id="guardSearch" placeholder="Search guard name or site..." oninput="renderGuards()"><h3>Registered Guards</h3>
+    <table>
+      <thead>
+        <tr>
+    <th>Photo</th>      <th>Name</th>
+          <th>Phone</th>
+          <th>ID</th>
+          <th>Site</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="guardList"></tbody>
+    </table>
+  </section>
+
+  <section id="attendance" class="card" hidden>
+    <h2>Record Attendance</h2>
+    <form id="attendanceForm">
+      <label>Select Guard</label>
+      <select id="attendanceGuard" required>
+        <option value="">Choose a guard</option>
+      </select>
+
+      <label>Attendance Status</label>
+      <select id="attendanceStatus">
+        <option>Present</option>
+        <option>Absent</option>
+        <option>Off Duty</option>
+        <option>On Leave</option>
+      </select>
+
+      <button class="action" type="submit">Save Attendance</button>
+    </form>
+
+   <h3>Monthly Guard Attendance</h3>
+
+<label for="calendarGuard">Select Guard:</label>
+<select id="calendarGuard">
+  <option value="">-- Choose Guard --</option>
+</select>
+
+<label for="calendarMonth">Select Month:</label>
+<input type="month" id="calendarMonth">
+
+<div id="attendanceCalendar"></div>
+
+<p id="attendanceSummary"></p> <h3>Attendance History</h3>
+    <ul id="attendanceList"></ul>
+  </section>
+</main>
+
+<script>
+let guards = [];
+let attendance = [];
+
+function saveData() {
+  localStorage.setItem("pamagiGuards", JSON.stringify(guards));
+  localStorage.setItem("pamagiAttendance", JSON.stringify(attendance));
+}
+
+function loadData() {
+  try {
+    guards = JSON.parse(localStorage.getItem("pamagiGuards")) || [];
+    attendance = JSON.parse(localStorage.getItem("pamagiAttendance")) || [];
+    if (!Array.isArray(guards)) guards = [];
+    if (!Array.isArray(attendance)) attendance = [];
+  } catch (error) {
+    guards = [];
+    attendance = [];
+  }
+}
+
+function showPage(page) {
+  document.getElementById("dashboard").hidden = page !== "dashboard";
+  document.getElementById("guards").hidden = page !== "guards";
+  document.getElementById("attendance").hidden = page !== "attendance";
+}
+
+function renderGuards() {
+  const list = document.getElementById("guardList");
+  const selector = document.getElementById("attendanceGuard");
+
+  list.innerHTML = "";
+  selector.innerHTML = '<option value="">Choose a guard</option>';
+
+ const search = document.getElementById("guardSearch").value.toLowerCase().trim();
+
+guards.forEach(function(guard, index) {
+  if (
+    !guard.name.toLowerCase().includes(search) &&
+    !guard.site.toLowerCase().includes(search)
+  ) {
+    return;
+  } 
+    const row = document.createElement("tr");
+
+ const photoCell = document.createElement("td");
+
+if (guard.photo) {
+  const img = document.createElement("img");
+  img.src = guard.photo;
+  img.alt = guard.name;
+  img.style.width = "50px";
+  img.style.height = "50px";
+  img.style.objectFit = "cover";
+  photoCell.appendChild(img);
+} else {
+  photoCell.textContent = "No photo";
+}
+
+row.appendChild(photoCell);
+
+[guard.name, guard.phone, guard.id, guard.site].forEach(function(value) {
+  const cell = document.createElement("td");
+  cell.textContent = value;
+  row.appendChild(cell);
+});   
+
+    const actionCell = document.createElement("td");
+    const deleteButton = document.createElement("button");
+    deleteButton.textContent = "Delete";
+const editButton = document.createElement("button");
+editButton.textContent = "Edit";
+editButton.style.marginRight = "5px";
+
+editButton.onclick = function() {
+  const newName = prompt("Enter guard's full name:", guard.name);
+  if (newName === null) return;
+
+  const newPhone = prompt("Enter phone number:", guard.phone);
+  if (newPhone === null) return;
+
+  const newId = prompt("Enter National ID number:", guard.id);
+  if (newId === null) return;
+
+  const newSite = prompt("Enter assigned site:", guard.site);
+  if (newSite === null) return;
+
+  if (!newName.trim() || !newPhone.trim() ||
+      !newId.trim() || !newSite.trim()) {
+    alert("All fields are required.");
+    return;
+  }
+
+  guard.name = newName.trim();
+  guard.phone = newPhone.trim();
+  guard.id = newId.trim();
+  guard.site = newSite.trim();
+
+  saveData();
+  renderGuards();
+  updateDashboard();renderSiteReport();
+  renderAttendance();
+  alert("Guard details updated successfully!");
+};
+
+actionCell.appendChild(editButton);    deleteButton.onclick = function() {
+      if (confirm("Delete this guard?")) {
+        guards.splice(index, 1);
+        saveData();
+        renderGuards();
+        updateDashboard();
+renderSiteReport();        renderAttendance();
+      }
+    };
+
+    actionCell.appendChild(deleteButton);
+    row.appendChild(actionCell);
+    list.appendChild(row);
+
+    const option = document.createElement("option");
+    option.value = guard.name;
+    option.textContent = guard.name + " - " + guard.site;
+    selector.appendChild(option);
+  });
+}function renderSiteReport() {
+  const report = document.getElementById("siteReport");
+  const siteCounts = {};
+
+  guards.forEach(function(guard) {
+    const site = guard.site.trim();
+    siteCounts[site] = (siteCounts[site] || 0) + 1;
+  });
+
+  report.innerHTML = "";
+
+  Object.keys(siteCounts).sort().forEach(function(site) {
+    const row = document.createElement("tr");
+    const siteCell = document.createElement("td");
+    const countCell = document.createElement("td");
+
+    siteCell.textContent = site;
+    countCell.textContent = siteCounts[site];
+
+    row.appendChild(siteCell);
+    row.appendChild(countCell);
+    report.appendChild(row);
+ }); refreshDashboardCounts();
+} function refreshDashboardCounts() {
+  document.getElementById("totalGuards").textContent = guards.length;
+  document.getElementById("totalAttendance").textContent = attendance.length;
+}
+
+function updateDashboard() {
+  document.getElementById("totalGuards").textContent = guards.length;
+  document.getElementById("totalAttendance").textContent = attendance.length;
+}
+
+function renderAttendance() {
+  const list = document.getElementById("attendanceList");
+  list.innerHTML = "";
+
+  attendance.forEach(function(record) {
+    const item = document.createElement("li");
+    item.textContent = record.name + " — " + record.status + " — " + record.date;
+    list.appendChild(item);
+  });
+}
+
+document.getElementById("guardForm").addEventListener("submit", function(event) {
+  event.preventDefault();
+
+  const guard = {
+    name: document.getElementById("guardName").value.trim(),
+    phone: document.getElementById("guardPhone").value.trim(),
+    id: document.getElementById("guardId").value.trim(),
+ site: document.getElementById("guardSite").value.trim(),
+photo: ""     };
+
+  if (!guard.name || !guard.phone || !guard.id || !guard.site) {
+    alert("Please fill in all fields.");
+    return;
+  }
+
+ var photoFile = document.getElementById("guardPhoto").files[0];
+
+function finishRegistration(photoData) {
+  guard.photo = photoData || "";
+  guards.push(guard);
+  saveData();
+  renderGuards();
+  updateDashboard();
+  renderSiteReport();
+  document.getElementById("guardForm").reset();
+  alert("Guard registered successfully!");
+}
+
+if (photoFile) {
+  var reader = new FileReader();
+  reader.onload = function() {
+    finishRegistration(reader.result);
+  };
+  reader.readAsDataURL(photoFile);
+} else {
+  finishRegistration("");
+} 
+});
+
+document.getElementById("attendanceForm").addEventListener("submit", function(event) {
+  event.preventDefault();
+
+  const name = document.getElementById("attendanceGuard").value;
+  const status = document.getElementById("attendanceStatus").value;
+
+  if (!name) {
+    alert("Please register a guard first.");
+    return;
+  }
+
+  attendance.push({
+    name: name,
+    status: status,
+    date: new Date().toLocaleString()
+  });
+
+  saveData();
+  renderAttendance();
+  updateDashboard();
+  alert("Attendance saved successfully!");
+});var monthlyMarks = JSON.parse(
+  localStorage.getItem("pamagiMonthlyMarks") || "[]"
+);
+
+function initMonthlyCalendar() {
+  var guardSelect = document.getElementById("calendarGuard");
+  var monthInput = document.getElementById("calendarMonth");
+
+  var now = new Date();
+  monthInput.value =
+    now.getFullYear() + "-" +
+    String(now.getMonth() + 1).padStart(2, "0");
+
+  guardSelect.innerHTML = '<option value="">-- Choose Guard --</option>';
+
+  guards.forEach(function(guard) {
+    var option = document.createElement("option");
+    option.value = guard.name;
+    option.textContent = guard.name;
+    guardSelect.appendChild(option);
+  });
+
+  guardSelect.onchange = renderMonthlyCalendar;
+  monthInput.onchange = renderMonthlyCalendar;
+
+  renderMonthlyCalendar();
+}
+
+function renderMonthlyCalendar() {
+  var guard = document.getElementById("calendarGuard").value;
+  var month = document.getElementById("calendarMonth").value;
+  var calendar = document.getElementById("attendanceCalendar");
+  var summary = document.getElementById("attendanceSummary");
+
+  calendar.innerHTML = "";var selectedGuard = guards.find(function(item) {
+  return item.name === guard;
+});
+
+if (selectedGuard && selectedGuard.photo) {
+  var photo = document.createElement("img");
+  photo.src = selectedGuard.photo;
+  photo.alt = guard;
+  photo.style.width = "80px";
+  photo.style.height = "80px";
+  photo.style.objectFit = "cover";
+  photo.style.display = "block";
+  photo.style.marginBottom = "10px";
+  calendar.appendChild(photo);
+}  summary.textContent = "";
+
+  if (!guard || !month) {
+    calendar.textContent = "Choose a guard and month first.";
+    return;
+  }
+
+  var parts = month.split("-");
+  var year = Number(parts[0]);
+  var monthNumber = Number(parts[1]);
+  var days = new Date(year, monthNumber, 0).getDate();
+
+  var present = 0;
+  var absent = 0;
+  var offDuty = 0;
+  var onLeave = 0;
+
+  var table = document.createElement("table");
+  table.border = "1";
+
+  var header = table.insertRow();
+  ["Day", "Attendance"].forEach(function(label) {
+    var cell = document.createElement("th");
+    cell.textContent = label;
+    header.appendChild(cell);
+  });
+
+  for (let day = 1; day <= days; day++) {   var row = table.insertRow();
+    var dayCell = row.insertCell();
+    var markCell = row.insertCell();
+
+    dayCell.textContent = day;
+
+    var mark = monthlyMarks.find(function(item) {
+      return item.guard === guard &&
+        item.month === month &&
+        item.day === day;
+    });
+
+    let status = mark ? mark.status : "";   var button = document.createElement("button");
+
+    button.type = "button";
+    button.style.minWidth = "100px";
+
+    function setButtonText() {
+      if (status === "P") button.textContent = "✓ Present";
+      else if (status === "A") button.textContent = "X Absent";
+      else if (status === "O") button.textContent = "O Off Duty";
+      else if (status === "L") button.textContent = "L On Leave";
+      else button.textContent = "Not marked";
+    }
+
+    setButtonText();
+
+    button.onclick = function() {
+      var choices = ["", "P", "A", "O", "L"];
+      status = choices[(choices.indexOf(status) + 1) % choices.length];
+
+      monthlyMarks = monthlyMarks.filter(function(item) {
+        return !(item.guard === guard &&
+          item.month === month &&
+          item.day === day);
+      });
+
+      if (status !== "") {
+        monthlyMarks.push({
+          guard: guard,
+          month: month,
+          day: day,
+          status: status
+        });
+      }
+
+      localStorage.setItem(
+        "pamagiMonthlyMarks",
+        JSON.stringify(monthlyMarks)
+      );
+
+      renderMonthlyCalendar();
+    };
+
+    markCell.appendChild(button);
+    if (status === "P") present++;
+    if (status === "A") absent++;
+    if (status === "O") offDuty++;
+    if (status === "L") onLeave++;
+  }
+
+  calendar.appendChild(table);
+
+  summary.textContent =
+    "Present: " + present +
+    " | Absent: " + absent +
+    " | Off Duty: " + offDuty +
+    " | On Leave: " + onLeave;
+}
+
+loadData();renderSiteReport();
+renderGuards();
+renderAttendance();
+updateDashboard();initMonthlyCalendar();
+</script>
+
+</body>
+</html>
